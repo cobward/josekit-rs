@@ -1,8 +1,6 @@
 use std::ops::Deref;
 
 use anyhow::bail;
-use openssl::pkey::{PKey, Private};
-use openssl::rsa::Rsa;
 
 use crate::jwk::{alg::rsapss::RsaPssKeyPair, Jwk, KeyPair};
 use crate::util::der::{DerBuilder, DerReader, DerType};

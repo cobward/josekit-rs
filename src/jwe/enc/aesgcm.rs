@@ -1,8 +1,11 @@
 use std::fmt::Display;
 use std::ops::Deref;
 
-use anyhow::bail;
-use openssl::symm::{self, Cipher};
+use aes_gcm::{
+    aead::{AeadInPlace, KeyInit},
+    Aes128Gcm, Aes256Gcm,
+};
+use anyhow::{anyhow, bail};
 
 use crate::jwe::JweContentEncryption;
 use crate::JoseError;
@@ -11,27 +14,16 @@ use crate::JoseError;
 pub enum AesgcmJweEncryption {
     /// AES GCM using 128-bit key
     A128gcm,
-    /// AES GCM using 192-bit key
-    A192gcm,
+    ///// AES GCM using 192-bit key
+    //A192gcm,
     /// AES GCM using 256-bit key
     A256gcm,
-}
-
-impl AesgcmJweEncryption {
-    fn cipher(&self) -> Cipher {
-        match self {
-            Self::A128gcm => Cipher::aes_128_gcm(),
-            Self::A192gcm => Cipher::aes_192_gcm(),
-            Self::A256gcm => Cipher::aes_256_gcm(),
-        }
-    }
 }
 
 impl JweContentEncryption for AesgcmJweEncryption {
     fn name(&self) -> &str {
         match self {
             Self::A128gcm => "A128GCM",
-            Self::A192gcm => "A192GCM",
             Self::A256gcm => "A256GCM",
         }
     }
@@ -39,7 +31,6 @@ impl JweContentEncryption for AesgcmJweEncryption {
     fn key_len(&self) -> usize {
         match self {
             Self::A128gcm => 16,
-            Self::A192gcm => 24,
             Self::A256gcm => 32,
         }
     }
@@ -56,19 +47,23 @@ impl JweContentEncryption for AesgcmJweEncryption {
         aad: &[u8],
     ) -> Result<(Vec<u8>, Option<Vec<u8>>), JoseError> {
         (|| -> anyhow::Result<(Vec<u8>, Option<Vec<u8>>)> {
-            let expected_len = self.key_len();
-            if key.len() != expected_len {
-                bail!(
-                    "The length of content encryption key must be {}: {}",
-                    expected_len,
-                    key.len()
-                );
-            }
+            let nonce = if let Some(iv) = iv {
+                iv.into()
+            } else {
+                bail!("iv is required")
+            };
 
-            let cipher = self.cipher();
-            let mut tag = [0; 16];
-            let encrypted_message = symm::encrypt_aead(cipher, key, iv, aad, message, &mut tag)?;
-            Ok((encrypted_message, Some(tag.to_vec())))
+            let mut out = message.to_vec();
+            match self {
+                Self::A128gcm => {
+                    Aes128Gcm::new(key.into()).encrypt_in_place_detached(nonce, aad, &mut out)
+                }
+                Self::A256gcm => {
+                    Aes256Gcm::new(key.into()).encrypt_in_place_detached(nonce, aad, &mut out)
+                }
+            }
+            .map_err(|e| anyhow!(e))
+            .map(|tag| (out, Some(tag.to_vec())))
         })()
         .map_err(|err| JoseError::InvalidKeyFormat(err))
     }
@@ -82,23 +77,29 @@ impl JweContentEncryption for AesgcmJweEncryption {
         tag: Option<&[u8]>,
     ) -> Result<Vec<u8>, JoseError> {
         (|| -> anyhow::Result<Vec<u8>> {
-            let expected_len = self.key_len();
-            if key.len() != expected_len {
-                bail!(
-                    "The length of content encryption key must be {}: {}",
-                    expected_len,
-                    key.len()
-                );
-            }
+            let nonce = if let Some(iv) = iv {
+                iv.into()
+            } else {
+                bail!("iv is required")
+            };
 
             let tag = match tag {
-                Some(val) => val,
+                Some(val) => val.into(),
                 None => bail!("A tag value is required."),
             };
 
-            let cipher = self.cipher();
-            let message = symm::decrypt_aead(cipher, key, iv, aad, encrypted_message, tag)?;
-            Ok(message)
+            let mut out = encrypted_message.to_vec();
+            match self {
+                Self::A128gcm => {
+                    Aes128Gcm::new(key.into()).decrypt_in_place_detached(nonce, aad, &mut out, tag)
+                }
+                Self::A256gcm => {
+                    Aes256Gcm::new(key.into()).decrypt_in_place_detached(nonce, aad, &mut out, tag)
+                }
+            }
+            .map_err(|e| anyhow!(e))?;
+
+            Ok(out)
         })()
         .map_err(|err| JoseError::InvalidJweFormat(err))
     }
@@ -134,11 +135,7 @@ mod tests {
         let message = b"abcde12345";
         let aad = b"test";
 
-        for enc in vec![
-            AesgcmJweEncryption::A128gcm,
-            AesgcmJweEncryption::A192gcm,
-            AesgcmJweEncryption::A256gcm,
-        ] {
+        for enc in vec![AesgcmJweEncryption::A128gcm, AesgcmJweEncryption::A256gcm] {
             let key = util::random_bytes(enc.key_len());
             let iv = util::random_bytes(enc.iv_len());
 

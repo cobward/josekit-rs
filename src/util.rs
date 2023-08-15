@@ -2,12 +2,10 @@ pub mod der;
 pub mod hash_algorithm;
 pub mod oid;
 
-use anyhow::bail;
 use base64::DecodeError;
 use base64::Engine as _;
 use once_cell::sync::Lazy;
-use openssl::bn::BigNumRef;
-use openssl::rand;
+use rand::RngCore;
 use regex;
 
 pub use crate::util::hash_algorithm::HashAlgorithm;
@@ -19,7 +17,7 @@ pub use HashAlgorithm::Sha512 as SHA_512;
 
 pub fn random_bytes(len: usize) -> Vec<u8> {
     let mut vec = vec![0; len];
-    rand::rand_bytes(&mut vec).unwrap();
+    rand::thread_rng().fill_bytes(&mut vec);
     vec
 }
 
@@ -69,52 +67,6 @@ pub(crate) fn decode_base64_urlsafe_no_pad(
     input: impl AsRef<[u8]>,
 ) -> Result<Vec<u8>, DecodeError> {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(input)
-}
-
-pub(crate) fn parse_pem(input: &[u8]) -> anyhow::Result<(String, Vec<u8>)> {
-    static RE_PEM: Lazy<regex::bytes::Regex> = Lazy::new(|| {
-        regex::bytes::Regex::new(concat!(
-            r"^",
-            r"-----BEGIN ([A-Z0-9 -]+)-----[\t ]*(?:\r\n|[\r\n])",
-            r"([\t\r\n a-zA-Z0-9+/=]+)",
-            r"-----END ([A-Z0-9 -]+)-----[\t ]*(?:\r\n|[\r\n])?",
-            r"$"
-        ))
-        .unwrap()
-    });
-
-    static RE_FILTER: Lazy<regex::bytes::Regex> =
-        Lazy::new(|| regex::bytes::Regex::new("[\t\r\n ]").unwrap());
-
-    let result = if let Some(caps) = RE_PEM.captures(input) {
-        match (caps.get(1), caps.get(2), caps.get(3)) {
-            (Some(ref m1), Some(ref m2), Some(ref m3)) if m1.as_bytes() == m3.as_bytes() => {
-                let alg = String::from_utf8(m1.as_bytes().to_vec())?;
-                let base64_data = RE_FILTER.replace_all(m2.as_bytes(), regex::bytes::NoExpand(b""));
-                let data = decode_base64_standard(&base64_data)?;
-                (alg, data)
-            }
-            _ => bail!("Mismatched the begging and ending label."),
-        }
-    } else {
-        bail!("Invalid PEM format.");
-    };
-
-    Ok(result)
-}
-
-pub(crate) fn num_to_vec(num: &BigNumRef, len: usize) -> Vec<u8> {
-    let vec = num.to_vec();
-    if vec.len() < len {
-        let mut tmp = Vec::with_capacity(len);
-        for _ in 0..(len - vec.len()) {
-            tmp.push(0);
-        }
-        tmp.extend_from_slice(&vec);
-        tmp
-    } else {
-        vec
-    }
 }
 
 #[cfg(test)]

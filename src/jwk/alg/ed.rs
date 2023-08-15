@@ -2,7 +2,6 @@ use std::fmt::Display;
 use std::ops::Deref;
 
 use anyhow::bail;
-use openssl::pkey::{PKey, Private};
 
 use crate::jwk::{Jwk, KeyPair};
 use crate::util;

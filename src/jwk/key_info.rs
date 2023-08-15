@@ -1,6 +1,4 @@
 use crate::jwk::alg::ec::EcCurve;
-use crate::jwk::alg::ecx::EcxCurve;
-use crate::jwk::alg::ed::EdCurve;
 use crate::jwk::Jwk;
 use crate::util;
 use crate::util::der::{DerClass, DerError, DerReader, DerType};
@@ -21,12 +19,6 @@ pub enum KeyAlg {
     },
     Ec {
         curve: Option<EcCurve>,
-    },
-    Ed {
-        curve: Option<EdCurve>,
-    },
-    Ecx {
-        curve: Option<EcxCurve>,
     },
 }
 

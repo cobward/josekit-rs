@@ -2,8 +2,6 @@ use std::fmt::Display;
 use std::ops::Deref;
 
 use anyhow::bail;
-use openssl::pkey::{PKey, Private, Public};
-use openssl::sign::{Signer, Verifier};
 
 use crate::jwk::{alg::rsa::RsaKeyPair, Jwk};
 use crate::jws::{JwsAlgorithm, JwsSigner, JwsVerifier};

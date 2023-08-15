@@ -1,12 +1,6 @@
 use std::{fmt::Display, ops::Deref};
 
 use anyhow::bail;
-use openssl::{
-    hash::MessageDigest,
-    pkey::{PKey, Private},
-    sign::Signer,
-    symm::{self, Cipher},
-};
 
 use crate::{jwe::JweContentEncryption, JoseError};
 

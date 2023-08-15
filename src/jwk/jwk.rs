@@ -6,10 +6,10 @@ use std::string::ToString;
 
 use anyhow::bail;
 
-use crate::jwk::alg::ec::{EcCurve, EcKeyPair};
-use crate::jwk::alg::ecx::{EcxCurve, EcxKeyPair};
-use crate::jwk::alg::ed::{EdCurve, EdKeyPair};
-use crate::jwk::alg::rsa::RsaKeyPair;
+//use crate::jwk::alg::ec::{EcCurve, EcKeyPair};
+//use crate::jwk::alg::ecx::{EcxCurve, EcxKeyPair};
+//use crate::jwk::alg::ed::{EdCurve, EdKeyPair};
+//use crate::jwk::alg::rsa::RsaKeyPair;
 use crate::util;
 use crate::{JoseError, Map, Value};
 
@@ -79,37 +79,37 @@ impl Jwk {
     ///
     /// # Arguments
     /// * `bits` - A key bits size
-    pub fn generate_rsa_key(bits: u32) -> Result<Self, JoseError> {
-        let key_pair = RsaKeyPair::generate(bits)?;
-        Ok(key_pair.to_jwk_key_pair())
-    }
+    //pub fn generate_rsa_key(bits: u32) -> Result<Self, JoseError> {
+    //    let key_pair = RsaKeyPair::generate(bits)?;
+    //    Ok(key_pair.to_jwk_key_pair())
+    //}
 
     /// Generate a new EC type JWK.
     ///
     /// # Arguments
     /// * `curve` - A EC curve algorithm
-    pub fn generate_ec_key(curve: EcCurve) -> Result<Self, JoseError> {
-        let key_pair = EcKeyPair::generate(curve)?;
-        Ok(key_pair.to_jwk_key_pair())
-    }
+    //pub fn generate_ec_key(curve: EcCurve) -> Result<Self, JoseError> {
+    //    let key_pair = EcKeyPair::generate(curve)?;
+    //    Ok(key_pair.to_jwk_key_pair())
+    //}
 
     /// Generate a new Ed type JWK.
     ///
     /// # Arguments
     /// * `curve` - A Ed curve algorithm
-    pub fn generate_ed_key(curve: EdCurve) -> Result<Self, JoseError> {
-        let key_pair = EdKeyPair::generate(curve)?;
-        Ok(key_pair.to_jwk_key_pair())
-    }
+    //pub fn generate_ed_key(curve: EdCurve) -> Result<Self, JoseError> {
+    //    let key_pair = EdKeyPair::generate(curve)?;
+    //    Ok(key_pair.to_jwk_key_pair())
+    //}
 
     /// Generate a new Ecx type JWK.
     ///
     /// # Arguments
     /// * `curve` - A Ecx curve algorithm
-    pub fn generate_ecx_key(curve: EcxCurve) -> Result<Self, JoseError> {
-        let key_pair = EcxKeyPair::generate(curve)?;
-        Ok(key_pair.to_jwk_key_pair())
-    }
+    //pub fn generate_ecx_key(curve: EcxCurve) -> Result<Self, JoseError> {
+    //    let key_pair = EcxKeyPair::generate(curve)?;
+    //    Ok(key_pair.to_jwk_key_pair())
+    //}
 
     /// Generate private key from private key.
     pub fn to_public_key(&self) -> Result<Self, JoseError> {

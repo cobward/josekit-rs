@@ -21,8 +21,14 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 base64 = "0.21"
 flate2 = "1"
-openssl = "0.10.51"
 time = "0.3"
+rand = "0.8.5"
+digest = "0.10.7"
+sha2 = "0.10.7"
+elliptic-curve = { version = "0.13.5", features = ["jwk", "ecdh", "pem"] }
+aes-gcm = "0.10.2"
+p256 = "0.13.2"
+ecdsa = { version = "0.16.8", features = ["signing", "verifying"] }
 
 [dev-dependencies]
 doc-comment = "0.3.3"
