@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Display;
 use std::ops::Deref;
 
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context};
 use digest::Digest;
 use elliptic_curve::ecdh::SharedSecret;
 use elliptic_curve::pkcs8::{AssociatedOid, DecodePublicKey};
@@ -13,7 +13,7 @@ use sha2::Sha256;
 use crate::jwe::{JweAlgorithm, JweContentEncryption, JweDecrypter, JweEncrypter, JweHeader};
 use crate::jwk::alg::ec::{EcCurve, EcKeyPair};
 use crate::jwk::Jwk;
-use crate::util;
+use crate::util::{self, map_to_ec_key, to_ec_key};
 use crate::{JoseError, JoseHeader, Map, Value};
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -364,15 +364,10 @@ impl EcdhEsJweAlgorithm {
                             "P-256" => EcCurve::P256,
                             val => bail!("EC key doesn't support the curve algorithm: {}", val),
                         };
-                        match jwk.curve() {
-                            Some(val) if val == curve.name() => {}
-                            Some(val) => {
-                                bail!("A parameter crv must be {} but {}", self.name(), val)
-                            }
-                            None => bail!("A parameter crv is required."),
-                        }
-                        let key_pair = EcKeyPair::from_jwk(&jwk)?;
-                        let private_key = key_pair.into_private_key();
+                        let jwk = to_ec_key(jwk.clone())?;
+
+                        let private_key =
+                            SecretKey::from_jwk(&jwk).context("unable construct secret key")?;
 
                         (private_key, EcdhEsKeyType::Ec(curve))
                     }
@@ -629,7 +624,7 @@ where
 
             let mut map = Map::new();
             map.insert("kty".to_string(), "EC".into());
-            map.insert("crv".to_string(), "P256".into());
+            map.insert("crv".to_string(), "P-256".into());
             let private_key = {
                 let key_pair = EcKeyPair::<C>::generate()?;
                 let mut jwk: Map<String, Value> = key_pair.to_jwk_public_key().into();
@@ -841,8 +836,7 @@ where
 
             let public_key: PublicKey<C> = match header.claim("epk") {
                 Some(Value::Object(map)) => {
-                    let jwk = serde_json::from_value(map.clone().into())
-                        .map_err(|e| anyhow!("unable to parse epk header as jwk: {e}"))?;
+                    let jwk = map_to_ec_key(map)?;
                     PublicKey::from_jwk(&jwk)
                         .map_err(|e| anyhow!("unable to parse jwk as public key: {e}"))?
                 }

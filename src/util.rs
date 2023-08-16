@@ -2,12 +2,17 @@ pub mod der;
 pub mod hash_algorithm;
 pub mod oid;
 
+use anyhow::{anyhow, Context};
 use base64::DecodeError;
 use base64::Engine as _;
+use elliptic_curve::JwkEcKey;
 use once_cell::sync::Lazy;
 use rand::RngCore;
 use regex;
+use serde_json::Map;
+use serde_json::Value;
 
+use crate::jwk::Jwk;
 pub use crate::util::hash_algorithm::HashAlgorithm;
 
 pub use HashAlgorithm::Sha1 as SHA_1;
@@ -67,6 +72,28 @@ pub(crate) fn decode_base64_urlsafe_no_pad(
     input: impl AsRef<[u8]>,
 ) -> Result<Vec<u8>, DecodeError> {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(input)
+}
+
+pub(crate) fn to_ec_key(jwk: Jwk) -> anyhow::Result<JwkEcKey> {
+    serde_json::to_value(jwk.clone())
+        .context("unable to parse jwk as json")?
+        .as_object()
+        .ok_or_else(|| anyhow!("expected object"))
+        .and_then(map_to_ec_key)
+}
+
+pub(crate) fn map_to_ec_key(map: &Map<String, Value>) -> anyhow::Result<JwkEcKey> {
+    let value: Map<String, Value> = map
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .filter(|(k, _)| {
+            ["kty", "crv", "x", "y", "d"]
+                .iter()
+                .any(|param| *param == k)
+        })
+        .collect();
+
+    serde_json::from_value(value.into()).context("unable to parse jwk")
 }
 
 #[cfg(test)]

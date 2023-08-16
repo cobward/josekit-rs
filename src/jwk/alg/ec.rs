@@ -9,6 +9,7 @@ use elliptic_curve::{Curve, CurveArithmetic, JwkParameters, SecretKey};
 use crate::jwk::{Jwk, KeyPair};
 use crate::util::der::{DerBuilder, DerReader, DerType};
 use crate::util::oid::{ObjectIdentifier, OID_ID_EC_PUBLIC_KEY, OID_PRIME256V1};
+use crate::util::to_ec_key;
 use crate::JoseError;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -126,8 +127,8 @@ where
     /// * `jwk` - A private key that is formatted by a JWK of EC type.
     pub fn from_jwk(jwk: &Jwk) -> Result<Self, JoseError> {
         (|| -> anyhow::Result<Self> {
-            let private_key =
-                SecretKey::from_jwk_str(jwk.to_string().as_str()).map_err(|e| anyhow!(e))?;
+            let ecjwk = to_ec_key(jwk.clone())?;
+            let private_key = SecretKey::from_jwk(&ecjwk)?;
             let algorithm = jwk.algorithm().map(|val| val.to_string());
             let key_id = jwk.key_id().map(|val| val.to_string());
 
